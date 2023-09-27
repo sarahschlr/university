@@ -1,0 +1,88 @@
+"""
+
+Answer File
+
+"""
+
+###############################################################################
+
+# Import modules
+
+from numpy.random import seed
+
+
+# Load own functions
+
+import self_study_functions as sf
+
+
+###############################################################################
+
+
+
+"""
+Run simulation
+
+"""
+
+
+Simulations = 1000
+Observation = 500
+K = 3 # number of nearest neughbours to consider for KNN matching function
+
+# Set seed for replicability
+seed(123)
+
+# ATE results from two estimators (OLS and KNN Matching) from 3 DGPs
+results = sf.simulations(Simulations, Observation, K)
+
+
+
+"""
+Plotting of results
+
+"""
+
+
+
+#DGP 1
+sf.histogram_plot(results[:, 0, 0], results[:, 1, 0], truth = 1, title = 'DGP 1')
+
+#DGP 2
+sf.histogram_plot(results[:, 0, 1], results[:, 1, 1], truth = 1, title = 'DGP 2')
+
+# DGP 3
+sf.histogram_plot(results[:, 0, 2], results[:, 1, 2], truth = 1, title = 'DGP 3')
+
+
+
+"""
+Performance measures
+
+"""
+
+
+# DGP 1
+sf.performance_measures(results[:, 0, 0], results[:, 1, 0], truth = 1, title = 'DGP 1')
+
+# DGP 2
+sf.performance_measures(results[:, 0, 1], results[:, 1, 1], truth = 1, title = 'DGP 2')
+
+# DGP 3
+sf.performance_measures(results[:, 0, 2], results[:, 1, 2], truth = 1, title = 'DGP 3')
+
+
+
+"""
+Print out estimated and true ATE for each DGP and Estimator again 
+
+"""
+
+
+ATE = sf.ate(results)
+
+
+
+###############################################################################
+##### END ######
+###############################################################################
