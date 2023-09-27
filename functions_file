@@ -1,0 +1,441 @@
+"""
+
+Functions File 
+
+"""
+
+# Import modules
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import sys
+
+
+# Set working directory
+
+PATH = '/Users/Sarah/Desktop/Data 2/self_study_functions'
+sys.path.append(PATH)
+
+
+###############################################################################
+# Estimators
+###############################################################################
+
+
+"""
+Estimator 1: OLS
+
+"""
+
+
+def ols(x, y):
+
+    """
+
+    Input
+    ----------
+    X: Covariates 
+    Y: Outcomes
+
+    Returns
+    -------
+    ATE: Average treatment effect, second column of beta coefficients,
+        (as treatment is a binomial variable and so coefficient before is ATE)
+    
+    
+    Using the formula (x' x)^-1 x' y for the betas
+    
+    """
+    
+    rows = len(y) # number of observations
+    
+    x_c = np.c_[np.ones(rows), x] # add constant
+   
+    betas = np.matmul(np.matmul(np.linalg.inv(x_c.transpose() @  x_c),  x_c.transpose()), y)
+    
+    ate = betas[1] # coefficient in front of (binomial) d
+    
+    return ate
+
+
+
+
+
+"""
+Estimator 2: Nearest Neighbour Matching
+
+"""
+
+
+def k_nnm(x, y, d, k):
+    
+    """
+
+    Input
+    ----------
+    X: Covariates (x_1 and x_2)
+    Y: Outcomes 
+    K: Number of nearest neighbours considered 
+
+    Returns
+    -------
+    ATE: Average treatment effect
+
+    
+    """
+    
+    
+    treatment_effect = [] # create empty list
+    
+    rows = len(x) # number of observations
+    
+    for i in range(rows):
+        Y = y
+        X = x
+        D = d
+       
+        treated = D[i]
+        outcome = Y[i]
+        index = np.where(D == treated) 
+        
+        X = np.delete(X, index, 0)
+        Y = np.delete(Y, index, 0)
+   
+        # calculate Euclidean distance
+        euclidean_distance = np.linalg.norm(X - x[i])
+        nnm_index = euclidean_distance.argsort()[:k]
+        
+        # estimate ATE
+        effect = y[i] - np.mean(Y[nnm_index])
+        treatment_effect.append(effect if treated == 1 else - treated)
+        
+    ate = sum(treatment_effect)/len(treatment_effect)
+    
+    return ate 
+
+
+
+###############################################################################
+# Data Generating Processes
+###############################################################################
+
+
+
+"""
+Data Generating Process 1
+
+""" 
+
+def DGP_1(N = 500, true_d = 1):
+    
+    """
+    Creates one draw of my first, linear data generating process
+
+    Input
+    ----------
+    N: Sample size (default of 500)
+    True_d: True treatment effect (truth), default set to 1
+
+    Returns
+    -------
+    X: Covariate matrix consisting of x_1, x_2 with uniform and normal 
+        distribution respectively
+    D: Treatment, binomial 
+    Y:  Outcome vector, with normally distributed error term added
+    
+    """
+    
+    x_1 = np.random.normal(0, 1, N)
+    x_2 = np.random.normal(0, 1, N)
+    X = np.column_stack((x_1, x_2)) # stack 1-D arrays (x_1, x_2) as columns into a 2-D array
+    
+    d = np.random.binomial(1, 0.5 , N)
+    
+    # DGP
+    y = 2 + true_d * d + 1.1 * x_1 + x_2 + np.random.normal(0, 1, N)    
+    
+    return (X, d, y)
+
+
+
+
+
+"""
+Data Generating Process 2
+
+""" 
+
+def DGP_2(N = 500, true_d = 1):
+    
+    """
+    Creates one draw of my second, non-linear data generating process
+
+    Input
+    ----------
+    N: sample size (default of 500)
+    True_d: true treatment effect (truth), default set to 1
+
+    Returns
+    -------
+    X: Covariate matrix c onsisting of x_1, x_2 with normal and random 
+        distribution respectively
+    D: Treatment, binomial 
+    Y:  Outcome vector, with normally distributed error term added
+    
+    Violating OLS assumption of linearity
+    
+    """
+    
+    x_1 = np.random.random(N)
+    x_2 = np.random.random(N)
+    X = np.column_stack((x_1, x_2)) # stack 1-D arrays (x_1, x_2) as columns into a 2-D array
+    
+    d = np.random.binomial(1, 0.5, N) 
+   
+    # DGP
+    y = -1 + true_d * d - 5 * x_1 + x_2 **2 + np.random.random(N) 
+
+    return (X, d, y)
+
+
+
+
+
+"""
+Data Generating Process 3
+
+""" 
+
+def DGP_3(N = 500, true_d  = 1):
+    
+    """
+    Creates one draw of my third data generating process which violates CIA
+
+    Input
+    ----------
+    N: Sample size (default of 500)
+
+    Returns
+    -------
+    X: Covariate matrix consisting of X_1, X_2 with normal and random 
+        distribution respectively
+    D: Treatment, binomial and increases as x_2 increases, weighted with x_1
+        dependent on x_1 and x_2
+    Y:  Outcome vector, with normally distributed error term added
+    
+    Violation of CIA
+    -----
+    The treatment variable is dependent on x_1 and x_2 (y is only directly 
+    dependent on x_1 though)
+    
+    """
+    
+    x_1 = np.random.uniform(0, 1, N)
+    x_2 = np.random.normal(0, 1, N)
+    X = np.column_stack((x_1, x_2))# stack 1-D arrays (x_1, x_2) as columns into a 2-D array
+    
+    d = np.random.binomial(1,np.where(x_2 >0.7, 0.8, 0.2), N) + x_2**2
+
+    y = -1 + true_d * d + 0.7 * x_1 + np.random.normal(0, 1 , N) 
+    
+    return (X, d, y)
+
+
+
+###############################################################################
+# Simulations, Plotting the Results and Performance Measurement
+###############################################################################
+
+
+"""
+Simulations Function
+
+"""
+
+
+
+def simulations(n_observations, n_simulations, k):
+
+   
+    """
+    Run simulations
+    
+
+    Input
+    ----------
+    N_simulations: Number of draws
+    N_Observations: Sample size (default of 500)
+    D_true: True treatment effect (default of 10)
+    K: Number of nearest neighbours considered for the K NN matching function
+
+    Returns
+    -------
+    ATE: Matrix of average treatement effect for three dgps for the two estimators
+
+    
+    """
+    
+    # Initialize for results
+    results = np.empty( (n_simulations, 2, 3) )
+
+    # Loop through length of n_simulations
+    for i in range(n_simulations):
+    
+        # DGP 1
+        x1, d1, y1 = DGP_1(N = n_observations) 
+        results[i, 0, 0] = ols(np.c_[x1, d1], y1)
+        results[i, 1, 0] = k_nnm(x1, y1, d1, k)
+    
+        # DGP 2
+        x2, d2, y2 = DGP_2(N = n_observations) 
+        results[i, 0, 1] = ols(np.c_[x2, d2], y2)
+        results[i, 1, 1] = k_nnm(x2, y2, d2, k)
+        
+        
+        # DGP 3
+        x3, d3, y3 = DGP_3(N = n_observations)
+        results[i, 0, 2] = ols(np.c_[x3, d3], y3)
+        results[i, 1, 2] = k_nnm(x3, y3, d3, k)
+        
+    return results
+
+
+
+
+
+"""
+Plotting the Results
+
+"""
+
+
+def histogram_plot (dgp_results_ols, dgp_results_knn, truth, title):
+    
+    """
+
+    Parameters
+    ----------
+    ATE of OLS and KNN Matching estimators for the 3 DGPs
+
+    Returns
+    -------
+    Histogram showing the accuracy of both estimators for the 3 DGPs
+    
+    """
+
+    plt.figure()
+    plt.hist(dgp_results_ols, bins = 'auto', color = 'palegreen', alpha = 0.7, label= 'OLS')
+    plt.hist(dgp_results_knn, bins = 'auto', color = 'skyblue', alpha = 0.7, label = 'KNN Matching')
+    plt.axvline(x = truth,label = "Truth")
+    plt.legend(loc='upper right')
+    plt.title(title)
+    plt.ylabel('Frequency')
+    plt.xlabel('ATE')
+    plt.show()
+
+
+
+"""
+Performance Measures to Compare the Estimators
+
+"""
+
+
+def performance_measures (dgp_results_ols, dgp_results_knn, truth, title):
+    
+    """
+    Performance measures to compare estimators
+    
+
+    Input
+    ----------
+    Dgp_results_ols: Results for the OLS from each DGP
+    Dgp_results_ols: Results for the OLS from each DGP
+    Truth: True ATE
+    Title: Title for each DGP 
+    
+
+    Returns
+    -------
+    Bias, variance and mse
+
+    
+    """
+    
+  
+    bias_ols = np.mean(dgp_results_ols) - truth
+    variance_ols = np.mean(bias_ols**2)
+    mse_ols = bias_ols**2 + variance_ols
+    
+    bias_k_nnm = np.mean(dgp_results_knn) - truth
+    variance_k_nnm = np.mean(bias_k_nnm**2)
+    mse_k_nnm = bias_k_nnm**2 + variance_k_nnm
+    
+    print("Results", str(title))
+    print()
+    
+    print("Bias OLS: " + str( round(bias_ols,3) ))
+    print("Bias KNN Matching: " + str( round(bias_k_nnm,3) ))
+    print()
+    
+    print("Variance OLS: " + str( round(variance_ols,3) ))
+    print("Variance KNN Matching: " + str( round(variance_k_nnm,3) ))
+    print()
+    
+    print("MSE OLS: " + str( round(mse_ols,3) ))
+    print("MSE KNN Matching: " + str( round(mse_k_nnm,3) ))
+
+
+
+
+def ate(results):
+
+   
+    """
+    Return estimated ATE explicitly 
+    
+
+    Input
+    ----------
+    N_simulations: Number of draws
+    N_Observations: Sample size (default of 500)
+    D_true: True treatment effect (default of 10)
+    K: Number of nearest neighbours considered for the K NN matching function
+    ATE: Coefficient of treatment variable, as d is binary
+
+    Returns
+    -------
+    ATE
+
+    
+    """
+    
+    ate_ols_dgp1 = results[:, 0, 0].mean()
+    ate_ols_dgp2 = results[:, 0, 1].mean()
+    ate_ols_dgp3 = results[:, 0, 2].mean()
+    
+    ate_knn_dgp1 = results[:, 1, 0].mean()
+    ate_knn_dgp2 = results[:, 1, 1].mean()
+    ate_knn_dgp3 = results[:, 1, 2].mean()
+    
+    print()
+    print("True ATE for all DGPs is: ", 1)
+    print()
+    
+    print("ATE OLS DGP 1: " + str( round(ate_ols_dgp1, 3) ))
+    print("ATE OLS DGP 2: " + str( round(ate_ols_dgp2, 3) ))
+    print("ATE OLS DGP 3: " + str( round(ate_ols_dgp3, 3) ))
+    print()
+    
+    print("ATE KNN Matching DGP 1: " + str( round(ate_knn_dgp1, 3) ))
+    print("ATE KNN Matching DGP 2: " + str( round(ate_knn_dgp2, 3) ))
+    print("ATE KNN Matching DGP 3: " + str( round(ate_knn_dgp3, 3) ))
+
+    
+
+###############################################################################
+##### END ######
+###############################################################################
+
+
